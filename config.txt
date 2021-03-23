@@ -1,0 +1,98 @@
+--Server
+Network = 10.90.0.0/24
+ip = 10.90.0.1
+
+comandos:
+ip 10.90.0.1/24 100.90.0.254
+--
+
+--R3
+Network dos pc = 10.90.0.0/24
+ip rede pc = 10.90.0.254/24
+Network do meio = 193.136.212.224/29
+ip do meio = 193.136.212.227
+
+comandos:
+conf t
+i e0/0
+ip address 10.90.0.254 255.255.255.0
+no shut
+exit
+i f1/0
+ip address
+no shut
+end
+--
+
+
+
+--PC1
+Network = 193.136.212.128/26
+ip = 193.136.212.129/26
+
+comandos:
+ip 193.136.212.129 193.136.212.190
+--
+
+--PC2
+Network = 193.136.212.128/26
+ip = 193.136.212.130/26
+
+comandos:
+ip 193.136.212.130/26 193.136.212.190
+--
+
+--R1
+Network dos pc  = 193.136.212.128/26
+ip rede pc = 193.136.212.190/26
+Network do meio = 193.136.212.224/29
+ip do meio = 193.136.212.225
+
+comandos:
+conf t
+i e0/0
+ip address 193.136.212.190 255.255.255.192
+no shut
+exit
+i f1/0
+ip address 193.136.212.225 255.255.255.248
+no shut
+end
+--
+
+
+
+--PC3
+Network = 193.136.212.192/27
+ip = 193.136.212.193/27
+
+comandos:
+ip 193.136.212/27 193.136.212.222
+--
+
+--PC4
+Network = 193.136.212.192/27
+ip = 193.136.212.194/27
+
+comandos:
+ip 193.136.212.192/27 193.136.212.222
+--
+
+
+--R2
+Network dos pc  = 193.136.212.192/27
+ip rede pc = 193.136.212.222/27
+Network do meio = 193.136.212.224/29
+ip do meio =  193.136.212.226
+
+comandos:
+conf t
+i e0/0
+ip address
+no shut
+exit
+i f1/0
+ip address
+no shut
+end
+--
