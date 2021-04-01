@@ -14,16 +14,21 @@ ip do meio = 193.136.212.227
 
 comandos:
 conf t
-i e0/0
+interface e0/0
 ip address 10.90.0.254 255.255.255.0
+ip nat inside
 no shut
 exit
-i f1/0
+interface f1/0
 ip address 193.136.212.227 255.255.255.248
+ip nat outside
 no shut
 exit
 ip route 193.136.212.128 255.255.255.192 193.136.212.225
 ip route 193.136.212.192 255.255.255.224 193.136.212.226
+access-list 1 permit 10.90.0.0 0.0.0.255
+ip nat inside source list 1 interface f1/0 overload
+ip nat inside source static tcp 10.90.0.1 80 193.136.212.227 80
 exit
 --
 
@@ -53,11 +58,11 @@ ip do meio = 193.136.212.225
 
 comandos:
 conf t
-i e0/0
+interface e0/0
 ip address 193.136.212.190 255.255.255.192
 no shut
 exit
-i f1/0
+interface f1/0
 ip address 193.136.212.225 255.255.255.248
 no shut
 exit
@@ -92,11 +97,11 @@ ip do meio =  193.136.212.226/29
 
 comandos:
 conf t
-i e0/0
+interface e0/0
 ip address 193.136.212.222 255.255.255.224
 no shut
 exit
-i f1/0
+interface f1/0
 ip address 193.136.212.226 255.255.255.248
 no shut
 exit
