@@ -42,9 +42,7 @@ int main(int argc, char *argv[]) {
 				fgets(buffer, BUF_SIZE, stdin);
 				write(fd, buffer, 1+strlen(buffer));
 			}
-		} else if(strcmp(instruction, "SOMA")==0) {
-			readValueServer();
-		} else if(strcmp(instruction, "MEDIA")==0) {
+		} else if(strcmp(instruction, "SOMA")==0 || strcmp(instruction, "MEDIA")==0) {
 			readValueServer();
 		} else if(strcmp(instruction, "SAIR")==0)
 			break;
