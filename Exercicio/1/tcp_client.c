@@ -21,17 +21,39 @@ void checkServerRead(int nread);
 void checkServerWrite(int sig);
 void readValueServer();
 void nextInstruction();
-void initilization(int argc, char *argv[]);
 
 int fd;
-char buffer[BUF_SIZE], instruction[100];
-int nread;
-char endServer[100];
-struct sockaddr_in addr;
-struct hostent *hostPtr;
 
 int main(int argc, char *argv[]) {
-	initilization(argc, argv);
+	char buffer[BUF_SIZE], instruction[100];
+	int nread;
+	char endServer[100];
+	struct sockaddr_in addr;
+	struct hostent *hostPtr;
+
+	signal(SIGINT, signalHandler);
+	signal(SIGPIPE, checkServerWrite);
+
+	if (argc != 3) {
+		printf("client <host> <port>\n");
+		exit(-1);
+	}
+
+	strcpy(endServer, argv[1]);
+	if ((hostPtr = gethostbyname(endServer)) == 0)
+		erro("Não consegui obter endereço");
+
+	bzero((void *) &addr, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = ((struct in_addr *)(hostPtr->h_addr))->s_addr;
+	addr.sin_port = htons((short) atoi(argv[2]));
+
+	if((fd = socket(AF_INET,SOCK_STREAM,0)) == -1)
+		erro("socket");
+	if(connect(fd,(struct sockaddr *)&addr,sizeof (addr)) < 0)
+		erro("Connect");
+
+
 	while(1) {
 		//send messsage to server
 		nextInstruction();
@@ -47,7 +69,7 @@ int main(int argc, char *argv[]) {
 		} else if(strcmp(instruction, "SAIR")==0)
 			break;
 		else
-			erro("instrucao nao conhecida\n");
+			printf("Erro: comando desconhecido\n");
 	}
 	close(fd);
 	exit(0);
@@ -91,26 +113,3 @@ void nextInstruction() {
 	instruction[strcspn(instruction, "\n")] = 0;
 }
 
-void initilization(int argc, char *argv[]) {
-	signal(SIGINT, signalHandler);
-	signal(SIGPIPE, checkServerWrite);
-
-	if (argc != 3) {
-		printf("cliente <host> <port>\n");
-		exit(-1);
-	}
-
-	strcpy(endServer, argv[1]);
-	if ((hostPtr = gethostbyname(endServer)) == 0)
-		erro("Não consegui obter endereço");
-
-	bzero((void *) &addr, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = ((struct in_addr *)(hostPtr->h_addr))->s_addr;
-	addr.sin_port = htons((short) atoi(argv[2]));
-
-	if((fd = socket(AF_INET,SOCK_STREAM,0)) == -1)
-		erro("socket");
-	if(connect(fd,(struct sockaddr *)&addr,sizeof (addr)) < 0)
-		erro("Connect");
-}

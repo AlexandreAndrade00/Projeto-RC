@@ -25,11 +25,11 @@ void process_client(int client_fd, int counter, struct sockaddr_in client_info);
 void erro(char *msg);
 void signalHandler(int sig);
 void initilization();
-void checkClient(int nread);
+void checkClient(int nread, int num);
 void writeToClient();
 void sum(int numbers[]);
 
-int fd_aux, client_addr_size, fd, client, aux = 0;
+int	client_addr_size, fd, client, aux = 0;
 bool nums_received = false;
 char buffer[BUF_SIZE], message[100];
 int nread = 0, aux, i, numbers[10];
@@ -59,35 +59,37 @@ int main() {
 }
 
 void process_client(int client_fd, int counter, struct sockaddr_in client_info) {
-	fd_aux = client_fd;
+	signal(SIGINT, signalHandler);
+
+	printf("Client %d, connected from %s:%d\n", counter, inet_ntoa(client_info.sin_addr), client_info.sin_port);
 
 	while (1) {
 		nread = read(client_fd, buffer, BUF_SIZE - 1);
-	    checkClient(nread);
+	    checkClient(nread, counter);
 	    buffer[nread] = '\0';
 	    printf("Client %d, connected from %s:%d says: %s\n", counter, inet_ntoa(client_info.sin_addr), client_info.sin_port, buffer);
 
 	    if (strcmp(buffer, "DADOS") == 0) {
-	    	printf("Reciving numbers\n");
+	    	printf("Reciving numbers from client %d\n", counter);
 	    	for (i = 0; i < 10; i++) {
 	    	    nread = read(client_fd, buffer, BUF_SIZE - 1);
-	    	    checkClient(nread);
+	    	    checkClient(nread, counter);
 	    	    numbers[i] = (int)strtol(buffer, (char **)NULL, 10);
-	    	    printf("%d ", numbers[i]);
+	    	    //printf("%d ", numbers[i]);
 	    	    fflush(stdout);
 	    	}
 	    	nums_received = true;
-	    	printf("\nNumbers received successfully\n");
+	    	printf("\nNumbers received successfully from client %d\n", counter);
 	    	
 	    } else if (strcmp(buffer, "SOMA") == 0) {
-	    	if(nums_received==true) {
+	    	if(nums_received) {
 	    		sum(numbers);
 	    		writeToClient(buffer);
 	    	} else
 	    		writeToClient(buffer);
 	    
 	    } else if (strcmp(buffer, "MEDIA") == 0) {
-	    	if(nums_received==true) {
+	    	if(nums_received) {
 	    		sum(numbers);
 	      		med = aux / 10;
 	      		writeToClient(buffer);
@@ -99,7 +101,7 @@ void process_client(int client_fd, int counter, struct sockaddr_in client_info) 
 	    	break;
 	    
 	    } else
-	    	erro("mensagem nao conhecida");
+	    	printf("Erro: mensagem nao conhecida\n");
 
 	    printf("\n");
 	}
@@ -113,20 +115,19 @@ void erro(char *msg) {
 
 void signalHandler(int sig) {
 	printf("Closing sockets...\n");
+	close(client);
 	exit(0);
 }
 
-void checkClient(int nread) {
+void checkClient(int nread, int num) {
 	if(nread == 0) {
-		printf("\nClient disconnected\n");
-		close(fd_aux);
+		printf("\nClient %d disconnected\n", num);
+		close(client);
 		exit(0);
 	}
 }
 
 void initilization() {
-	signal(SIGINT, signalHandler);
-
 	bzero((void *)&addr, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -142,7 +143,7 @@ void initilization() {
 	  	erro("na funcao listen");
 
 	client_addr_size = sizeof(client_addr);
-	printf("Receving messages from %s:%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+	printf("Server open on %s:%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 }
 
 void sum(int numbers[]) {
@@ -153,12 +154,12 @@ void sum(int numbers[]) {
 }
 
 void writeToClient() {
-	if (nums_received == true) {
+	if (nums_received) {
 		if (strcmp(buffer, "SOMA") == 0)
 			snprintf(message, 100, "Soma=%d\n", aux);
 		else if (strcmp(buffer, "MEDIA") == 0)
 			snprintf(message, 100, "Media=%0.2f\n", med);
 	} else
 		snprintf(message, 100, "No numbers yet!\n");
-	write(fd_aux, message, 1 + strlen(message));
+	write(client, message, 1 + strlen(message));
 }
