@@ -11,17 +11,26 @@
 #include <string.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <signal.h>
 
 #define BUF_SIZE 1024
 
 void erro(char *msg);
+void signalHandler(int sig);
+void checkServerRead(int nread);
+void checkServerWrite(int sig);
+
+int fd;
 
 int main(int argc, char *argv[]) {
 	char endServer[100];
 	char buffer[BUF_SIZE];
-	int fd, nread;
+	int nread, nums_received = 0;
 	struct sockaddr_in addr;
 	struct hostent *hostPtr;
+
+	signal(SIGINT, signalHandler);
+	signal(SIGPIPE, checkServerWrite);
 
 	if (argc != 4) {
 		printf("cliente <host> <port> <string>\n");
@@ -41,27 +50,42 @@ int main(int argc, char *argv[]) {
 		erro("socket");
 	if(connect(fd,(struct sockaddr *)&addr,sizeof (addr)) < 0)
 		erro("Connect");
+
 	
-	while(1) {	
-	//send messsage to server
+	while(1) {
+		//send messsage to server
 		write(fd, argv[3], 1 + strlen(argv[3]));
+
 		if(strcmp(argv[3], "DADOS")==0) {
 			for(int i=0; i<10; i++){
 				fgets(buffer, BUF_SIZE, stdin);
 				write(fd, buffer, 1+strlen(buffer));
 			}
+			nums_received = 1;
 		} else if(strcmp(argv[3], "SOMA")==0) {
-			nread = read(fd, buffer, BUF_SIZE-1);
-			buffer[nread] = '\0';
-			printf("%s\n", buffer);
+			if(nums_received == 1){
+				nread = read(fd, buffer, BUF_SIZE-1);
+				checkServerRead(nread);
+				buffer[nread] = '\0';
+				printf("%s\n", buffer);
+			} else
+				printf("No numbers yet!\n");
 		} else if(strcmp(argv[3], "MEDIA")==0) {
-			nread = read(fd, buffer, BUF_SIZE-1);
-			buffer[nread] = '\0';
-			printf("%s\n", buffer);
+			if(nums_received == 1){
+				nread = read(fd, buffer, BUF_SIZE-1);
+				checkServerRead(nread);
+				buffer[nread] = '\0';
+				printf("%s\n", buffer);
+			} else
+				printf("No numbers yet!\n");
 		} else if(strcmp(argv[3], "SAIR")==0) {
-			nread = read(fd, buffer, BUF_SIZE-1);
-			buffer[nread] = '\0';
-			printf("%s\n", buffer);
+			if(nums_received == 1){
+				nread = read(fd, buffer, BUF_SIZE-1);
+				checkServerRead(nread);
+				buffer[nread] = '\0';
+				printf("%s\n", buffer);
+			} else
+				printf("No numbers yet!\n");
 			break;
 		} else
 			erro("instrucao nao conhecida\n");
@@ -78,4 +102,24 @@ int main(int argc, char *argv[]) {
 void erro(char *msg) {
 	printf("Erro: %s\n", msg);
 	exit(-1);
+}
+
+void signalHandler(int sig) {
+	printf("\n");
+	close(fd);
+	exit(0);
+}
+
+void checkServerRead(int nread){
+	if(nread == 0){
+		printf("Server is closed\n");
+		close(fd);
+		exit(0);
+	}
+}
+
+void checkServerWrite(int sig){
+	printf("Server is closed\n");
+	close(fd);
+	exit(0);
 }
