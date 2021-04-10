@@ -59,7 +59,6 @@ int main() {
 }
 
 void process_client(int client_fd, int counter, struct sockaddr_in client_info) {
-	signal(SIGINT, signalHandler);
 
 	printf("Client %d, connected from %s:%d\n", counter, inet_ntoa(client_info.sin_addr), client_info.sin_port);
 
@@ -114,8 +113,10 @@ void erro(char *msg) {
 }
 
 void signalHandler(int sig) {
-	printf("Closing sockets...\n");
+	printf("\nClosing sockets...\n");
 	close(client);
+	int aux =1;
+	setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&aux,sizeof(int));
 	exit(0);
 }
 
@@ -128,6 +129,8 @@ void checkClient(int nread, int num) {
 }
 
 void initilization() {
+
+	signal(SIGINT, signalHandler);
 	bzero((void *)&addr, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr("127.0.0.1");

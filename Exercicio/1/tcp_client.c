@@ -23,10 +23,10 @@ void readValueServer();
 void nextInstruction();
 
 int fd;
+char buffer[BUF_SIZE], instruction[100];
+int nread;
 
 int main(int argc, char *argv[]) {
-	char buffer[BUF_SIZE], instruction[100];
-	int nread;
 	char endServer[100];
 	struct sockaddr_in addr;
 	struct hostent *hostPtr;
