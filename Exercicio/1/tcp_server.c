@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#define SERVER_PORT 9000
+#define SERVER_PORT 9008
 #define BUF_SIZE 1024
 
 
@@ -29,7 +29,7 @@ void checkClient(int nread, int num);
 void writeToClient();
 void sum(int numbers[]);
 
-int	client_addr_size, fd, client, aux = 0;
+int	client_addr_size, fd, client, aux = 0, client_pid;
 bool nums_received = false;
 char buffer[BUF_SIZE], message[100];
 int nread = 0, aux, i, numbers[10];
@@ -61,6 +61,10 @@ int main() {
 void process_client(int client_fd, int counter, struct sockaddr_in client_info) {
 
 	printf("Client %d, connected from %s:%d\n", counter, inet_ntoa(client_info.sin_addr), client_info.sin_port);
+
+	nread = read(client_fd, buffer, BUF_SIZE - 1);
+	client_pid = (int) strtol(buffer, (char **)NULL, 10);
+	printf("Client PID is %d\n", client_pid);
 
 	while (1) {
 		nread = read(client_fd, buffer, BUF_SIZE - 1);
@@ -114,9 +118,10 @@ void erro(char *msg) {
 
 void signalHandler(int sig) {
 	printf("\nClosing sockets...\n");
+	kill(client_pid, SIGTERM);
 	close(client);
-	int aux =1;
-	setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&aux,sizeof(int));
+	char aux = 1;
+	setsockopt(client, SOL_SOCKET, SO_REUSEADDR,&aux, sizeof(aux));
 	exit(0);
 }
 

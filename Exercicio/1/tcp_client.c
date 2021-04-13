@@ -18,13 +18,13 @@
 void erro(char *msg);
 void signalHandler(int sig);
 void checkServerRead(int nread);
-void checkServerWrite(int sig);
+void onServerClose(int sig);
 void readValueServer();
 void nextInstruction();
 
 int fd;
 char buffer[BUF_SIZE], instruction[100];
-int nread;
+int nread, teste = 0;
 
 int main(int argc, char *argv[]) {
 	char endServer[100];
@@ -32,7 +32,8 @@ int main(int argc, char *argv[]) {
 	struct hostent *hostPtr;
 
 	signal(SIGINT, signalHandler);
-	signal(SIGPIPE, checkServerWrite);
+	signal(SIGPIPE, onServerClose);
+	signal(SIGTERM, onServerClose);
 
 	if (argc != 3) {
 		printf("client <host> <port>\n");
@@ -53,6 +54,9 @@ int main(int argc, char *argv[]) {
 	if(connect(fd,(struct sockaddr *)&addr,sizeof (addr)) < 0)
 		erro("Connect");
 
+	//send server PID
+	sprintf(instruction, "%d", getpid());
+	write(fd, instruction, 1 + strlen(instruction));
 
 	while(1) {
 		//send messsage to server
@@ -62,8 +66,7 @@ int main(int argc, char *argv[]) {
 		if(strcmp(instruction, "DADOS")==0) {
 			for(int i=0; i<10; i++){
 				fgets(buffer, BUF_SIZE, stdin);
-				write(fd, buffer, 1+strlen(buffer));
-			}
+				write(fd, buffer, 1+strlen(buffer));			}
 		} else if(strcmp(instruction, "SOMA")==0 || strcmp(instruction, "MEDIA")==0) {
 			readValueServer();
 		} else if(strcmp(instruction, "SAIR")==0)
@@ -94,11 +97,12 @@ void checkServerRead(int nread){
 	}
 }
 
-void checkServerWrite(int sig){
+void onServerClose(int sig){
 	printf("Server is closed\n");
-	close(fd);
+	//close(fd);
 	exit(0);
 }
+
 
 void readValueServer() {
 	nread = read(fd, buffer, BUF_SIZE-1);
@@ -112,4 +116,5 @@ void nextInstruction() {
 	fgets(instruction, sizeof(instruction), stdin);
 	instruction[strcspn(instruction, "\n")] = 0;
 }
+
 
