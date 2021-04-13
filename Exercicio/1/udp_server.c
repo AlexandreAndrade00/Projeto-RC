@@ -39,13 +39,14 @@ int main(void) {
 	}
 
 	while(1) {
-		buf[0]=0;
+		buf[0] = '\0';
 		// Espera recepção de mensagem (a chamada é bloqueante)
 		if((recv_len = recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_outra, (socklen_t *)&slen)) == -1) {
 	 		erro("Erro no recvfrom");
 		}
 		printf("Recebi uma mensagem do sistema com o endereço %s e o porto %d\n", inet_ntoa(si_outra.sin_addr), ntohs(si_outra.sin_port));
 		printf("Conteúdo da mensagem: %s\n" , buf);
+		
 		// Para ignorar o restante conteúdo (anterior do buffer)
 		buf[recv_len]='\0';
 		sprintf(buf, "%ld", strlen(buf));
