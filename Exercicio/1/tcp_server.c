@@ -120,6 +120,7 @@ void signalHandler(int sig) {
 	printf("\nClosing sockets...\n");
 	kill(client_pid, SIGTERM);
 	close(client);
+	close(fd);
 	char aux = 1;
 	setsockopt(client, SOL_SOCKET, SO_REUSEADDR,&aux, sizeof(aux));
 	exit(0);
