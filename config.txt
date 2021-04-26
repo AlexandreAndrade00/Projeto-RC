@@ -29,6 +29,7 @@ ip route 193.136.212.192 255.255.255.224 193.136.212.226
 access-list 1 permit 10.90.0.0 0.0.0.255
 ip nat inside source list 1 interface f1/0 overload
 ip nat inside source static tcp 10.90.0.1 80 193.136.212.227 80
+ip nat inside source static udp 10.90.0.1 81 193.136.212.227 81
 exit
 --
 
