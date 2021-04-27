@@ -52,7 +52,7 @@ int main(void) {
 		// Para ignorar o restante conteúdo (anterior do buffer)
 		buf[recv_len]='\0';
 		sprintf(buf, "%ld", strlen(buf));
-		if((send_len = sendto(s, buf, 1024, 0, (struct sockaddr *) &si_outra, sizeof(si_outra))) == -1) {
+		if((send_len = sendto(s, buf, strlen(buf) + 1 , 0, (struct sockaddr *) &si_outra, sizeof(si_outra))) == -1) {
 			erro("sendto");
 		}
 	}

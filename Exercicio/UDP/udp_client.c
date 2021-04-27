@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 	if ((fd = socket(AF_INET,SOCK_DGRAM,0)) == -1)
 		erro("socket");
 		
-	if((send_len = sendto(fd, argv[3], BUFLEN, 0, (struct sockaddr *) &addr, slen)) == -1) {
+	if((send_len = sendto(fd, argv[3], strlen(argv[3]) + 1, 0, (struct sockaddr *) &addr, slen)) == -1) {
 		erro("sendto");
 	}
 	if((recv_len = recvfrom(fd, buf, BUFLEN, 0, (struct sockaddr *) &addr, (socklen_t *) &slen)) == -1) {
