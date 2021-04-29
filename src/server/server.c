@@ -1,4 +1,5 @@
 #include "server.h"
+#include "dict.h"
 
 FILE *fptr;
 int fdConfig, fdClient, admin, client;
@@ -27,14 +28,17 @@ int main(int argc, char *argv[]) {
 }
 
 void clientes(char *port, char *file) {
-	char buffer[BUFFSIZE], *string, *found, info[7][BUFFSIZE], fileLine[7][128], auth[100][32];
-	int porto = (int) strtol(port, (char **) NULL, 10), indexAuth=0, count;
+	node *dict;
+	dict = malloc(sizeof(node)*100);
+	char buffer[BUFFSIZE], *string, *found, info[7][128], fileLine[7][128];
+	int porto = (int) strtol(port, (char **) NULL, 10), count;
 	struct sockaddr_in clientAddr, newClientAddr;
+	char *newClient;
 	socklen_t slen = sizeof(newClientAddr);
 	bool exist=false;
 	
 	clientAddr.sin_family = AF_INET;
-	clientAddr.sin_addr.s_addr = inet_addr("127.0.0.1");  //endereco do server
+	clientAddr.sin_addr.s_addr = inet_addr(ADDRESS);  //endereco do server
 	clientAddr.sin_port = htons(porto);					  //porto onde recebe comandos config
 	
 	if((fdClient=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) 
@@ -45,7 +49,9 @@ void clientes(char *port, char *file) {
 		
 	printf("Server for clients open on %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 	
+	
 	while (1) {
+		printf("A aguardar mensagem!\n");
 	    if(recvfrom(fdClient, buffer, BUFFSIZE, 0, (struct sockaddr *) &newClientAddr, (socklen_t *)&slen) < 0) {
 	 		erro("no recvfrom");
 		}
@@ -58,6 +64,7 @@ void clientes(char *port, char *file) {
             count++;
         }
 		//TODO resto de funcionalidades
+		//verificar se utilizador esta autenticado antes de realizar opearcoes sem ser AUTH
 		if (strcmp(info[0], "AUTH")==0) {
 			fptr=fopen(file, "r");
 			
@@ -74,17 +81,62 @@ void clientes(char *port, char *file) {
         			exist=true;
         			//TODO verifcacao que ja fez login
         			if (strcmp(fileLine[2], info[2])==0) {
-        				strcpy(auth[indexAuth], info[1]);
-        				indexAuth++;
-        				fclose(fptr);
-        				snprintf(buffer, 1024, "Autenticado com sucesso!\nPermissoes: cliente-servidor: %s, P2P: %s, grupo: %s", fileLine[3], fileLine[4], fileLine[5]);
-        				sendto(fdClient, buffer, BUFFSIZE, 0, (struct sockaddr *) &newClientAddr, slen);
-        				break;
+        				newClient = inet_ntoa(newClientAddr.sin_addr);
+        				if (strcmp(fileLine[1], newClient)==0) {
+        					adicionar_dict(dict, fileLine[0], newClient, ntohs(newClientAddr.sin_port), fileLine[3], fileLine[4], fileLine[5]);
+        					snprintf(buffer, 1024, "Autenticado com sucesso!\nPermissoes: cliente-servidor: %s, P2P: %s, grupo: %s", fileLine[3], fileLine[4], fileLine[5]);
+        					sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+        					printf("%s conectado -> %s:%d\n", fileLine[0], newClient, ntohs(newClientAddr.sin_port));
+        					break;
+        				} else {
+        					strcpy(buffer, "Endereco nao corresponde ao guardado!\n");
+        					sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+        					break;
+        				}
         			} else {
         				strcpy(buffer, "Password errada!\n");
-        				sendto(fdClient, buffer, BUFFSIZE, 0, (struct sockaddr *) &newClientAddr, slen);
+        				sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
         				break;
         			}
+        		}
+        	}
+        	if (exist==false) {
+        		strcpy(buffer, "Nao esta registado!\n");
+        			sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+        	} else
+        		exist=false;
+        		
+        	fclose(fptr);
+        		
+		} else if (strcmp(info[0], "SEND")==0) {
+			fptr=fopen(file, "r");
+			
+			while(fgets(buffer, sizeof(buffer), fptr) != NULL) {
+				string = strdup(buffer);
+				
+				count=0;
+				while((found = strsep(&string, " ")) != NULL) {	//criar substrings
+            		strcpy(fileLine[count], found);
+            		count++;
+        		}
+        		
+        		if (strcmp(fileLine[0], info[1])==0) {
+        			exist=true;
+        			porto = procurar_port(dict, fileLine[1]);
+        			if (porto==0) {
+        				printf("Utilizador nao autenticado no servidor\n");
+        				fclose(fptr);
+        				break;
+        			}
+        			newClient = inet_ntoa(newClientAddr.sin_addr);
+        			char *aux = procurar_name(dict, newClient, ntohs(newClientAddr.sin_port));
+        			sprintf(buffer, "%s SENT %s", aux, info[2]);
+        			newClientAddr.sin_addr.s_addr = inet_addr(fileLine[1]);
+        			newClientAddr.sin_port=htons(porto);
+        			printf("A redirecionar mensagem para %s:%d\n", fileLine[1], porto);
+        			sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+        			fclose(fptr);
+        			break;
         		}
         	}
         	if (exist==false) {
@@ -92,8 +144,11 @@ void clientes(char *port, char *file) {
         			sendto(fdClient, buffer, BUFFSIZE, 0, (struct sockaddr *) &newClientAddr, slen);
         	} else
         		exist=false;
+		} else if (strcmp(info[0], "QUIT")==0) {
+			remover_dict(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port));
 		}
 	}
+	free(dict);
 }
 
 void config(char *port, char *file) {
@@ -101,7 +156,7 @@ void config(char *port, char *file) {
 	struct sockaddr_in configAddr, adminAddr;
 	
 	configAddr.sin_family = AF_INET;
-	configAddr.sin_addr.s_addr = inet_addr("127.0.0.1");  //endereco do server
+	configAddr.sin_addr.s_addr = inet_addr(ADDRESS);  //endereco do server
 	configAddr.sin_port = htons(porto);					  //porto onde recebe comandos config
 
 	//abrir socket, bind ao porto, ficar a espera de conexoes

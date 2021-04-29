@@ -9,8 +9,10 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdbool.h>
+#include <search.h>
 
 #define BUFFSIZE 1024
+#define ADDRESS "10.90.0.1"
 
 void config();
 void processAdmin(int admin, struct sockaddr_in adminAddr, char *file);
