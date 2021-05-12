@@ -63,6 +63,7 @@ void clientes(char *port, char *file) {
             strcpy(info[count], found);
             count++;
         }
+        printf("%s\n", info[0]);
 		//TODO resto de funcionalidades
 		//verificar se utilizador esta autenticado antes de realizar opearcoes sem ser AUTH
 		if (strcmp(info[0], "AUTH")==0) {
@@ -125,8 +126,7 @@ void clientes(char *port, char *file) {
         			porto = procurar_port(dict, fileLine[1]);
         			if (porto==0) {
         				printf("Utilizador nao autenticado no servidor\n");
-        				fclose(fptr);
-        				break;
+						break;
         			}
         			newClient = inet_ntoa(newClientAddr.sin_addr);
         			char *aux = procurar_name(dict, newClient, ntohs(newClientAddr.sin_port));
@@ -135,8 +135,7 @@ void clientes(char *port, char *file) {
         			newClientAddr.sin_port=htons(porto);
         			printf("A redirecionar mensagem para %s:%d\n", fileLine[1], porto);
         			sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
-        			fclose(fptr);
-        			break;
+					break;
         		}
         	}
         	if (exist==false) {
@@ -144,6 +143,41 @@ void clientes(char *port, char *file) {
         			sendto(fdClient, buffer, BUFFSIZE, 0, (struct sockaddr *) &newClientAddr, slen);
         	} else
         		exist=false;
+
+        	fclose(fptr);
+		} else if (strcmp(info[0], "REQUEST")==0) {
+			printf("received\n");
+			fptr=fopen(file, "r");
+			
+			while(fgets(buffer, sizeof(buffer), fptr) != NULL) {
+				string = strdup(buffer);
+				
+				count=0;
+				while((found = strsep(&string, " ")) != NULL) {	//criar substrings
+            		strcpy(fileLine[count], found);
+            		count++;
+        		}
+        		
+        		if (strcmp(fileLine[0], info[1])==0) {
+        			exist=true;
+        			porto = procurar_port(dict, fileLine[1]);
+        			if (porto==0) {
+        				printf("Utilizador nao autenticado no servidor\n");
+						break;
+        			}
+        			printf("A enviar ip e porto de utilizador requisitado!\n");
+        			sprintf(buffer, "%s:%d", fileLine[1], porto);
+        			sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+					break;
+        		}
+        	}
+        	if (exist==false) {
+        		strcpy(buffer, "Nao esta registado!\n");
+        			sendto(fdClient, buffer, BUFFSIZE, 0, (struct sockaddr *) &newClientAddr, slen);
+        	} else
+        		exist=false;
+
+        	fclose(fptr);
 		} else if (strcmp(info[0], "QUIT")==0) {
 			remover_dict(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port));
 		}
