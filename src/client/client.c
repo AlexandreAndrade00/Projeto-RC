@@ -19,6 +19,7 @@
 
 int fd;
 struct sockaddr_in addr, addrP2P, addrGrupo;
+struct ip_mreq group;
 char buffer[BUFFSIZE];
 pthread_t receive;
 socklen_t slen = sizeof(addr);
@@ -29,6 +30,7 @@ void *receiveMsg(void *arguments);
 void userInteration();
 void getMyName(char *aux);
 void handleP2P(char *input, node *dict);
+void handleGrupo(char *input);
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
@@ -49,6 +51,8 @@ int main(int argc, char *argv[]) {
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = ((struct in_addr *)(hostPtr->h_addr))->s_addr;
 	addr.sin_port = htons(porto);
+
+	group.imr_interface.s_addr=addr.sin_addr.s_addr;
 
 	if ((fd = socket(AF_INET,SOCK_DGRAM,0)) == -1)
 		erro("socket");
@@ -100,6 +104,18 @@ void userInteration() {
 				break;
 			} else if (strcmp(found, "SP2P")==0) {
 				handleP2P(buffer, dict);
+			} else if (strcmp(found, "SGRUPO")==0) {
+				handleGrupo(buffer);
+			} else if (strcmp(found, "IPGRUPO")==0) {
+				sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
+				usleep(100000);
+				char *aux = buffer;
+				group.imr_multiaddr.s_addr = inet_addr(aux);
+				if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0) {
+    				perror("adding multicast group");
+    				close(fd);
+    				exit(-1);
+  				}
 			} else 
 				sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 		}
@@ -166,8 +182,40 @@ void handleP2P(char *input, node *dict) {
 	free(string);
 }
 
+void handleGrupo(char *input) {
+	struct in_addr localInterface;
+
+	char *found, *string, info[3][500];
+	string = strdup(input);
+	for (int i=0; i<3; i++) {
+		found = strsep(&string, " ");
+		strcpy(info[i], found);
+	}
+	addrGrupo.sin_family = AF_INET;
+	addrGrupo.sin_addr.s_addr = inet_addr(&input[1]);
+	addrGrupo.sin_port = htons(9005);
+
+	char loopch=0;
+    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&loopch, sizeof(loopch)) < 0) {
+    	perror("setting IP_MULTICAST_LOOP:");
+    	close(fd);
+    	exit(-1);
+    }
+
+    localInterface.s_addr = addr.sin_addr.s_addr;
+	if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, (char *)&localInterface, sizeof(localInterface)) < 0) {
+    	perror("setting local interface");
+    	close(fd);
+    	exit(-1);
+	}
+
+	if (sendto(fd, info[2], strlen(info[2])+1, 0, (struct sockaddr*) &addrGrupo, sizeof(addrGrupo)) < 0) {
+    	perror("sending datagram message");
+  	}
+}
+
 void erro(char *msg) {
-  printf("Erro: %s\n", msg);
+	printf("Erro: %s\n", msg);
 	exit(-1);
 }
 
