@@ -146,7 +146,7 @@ void clientes(char *port, char *file) {
 
         	fclose(fptr);
 		} else if (strcmp(info[0], "REQUEST")==0) {
-			printf("received\n");
+
 			fptr=fopen(file, "r");
 			
 			while(fgets(buffer, sizeof(buffer), fptr) != NULL) {
@@ -166,7 +166,7 @@ void clientes(char *port, char *file) {
 						break;
         			}
         			printf("A enviar ip e porto de utilizador requisitado!\n");
-        			sprintf(buffer, "%s:%d", fileLine[1], porto);
+        			sprintf(buffer, "REQUESTED %s:%d", fileLine[1], porto);
         			sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
 					break;
         		}

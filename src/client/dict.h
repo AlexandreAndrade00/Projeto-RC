@@ -10,5 +10,5 @@ typedef struct {
 } node;
 
 void adicionar_dict(node *dict, char *nome, char *ip, int port);
-void procurar_ip_port(node *dict, char* nome, char *info);
+void procurar_ip_port(node *dict, char* nome, char *info, int size);
 void remover_dict(node *dict, char *ip, int port);

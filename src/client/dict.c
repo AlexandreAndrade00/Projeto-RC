@@ -13,12 +13,12 @@ void adicionar_dict(node *dict, char *nome, char *ip, int port) {
 }
 
 
-void procurar_ip_port(node *dict, char* nome, char *info) {
+void procurar_ip_port(node *dict, char* nome, char *info, int size) {
 	int i=0;
 	while(dict[i].port!=0) {
 		if (strcmp(nome, dict[i].nome)==0) {
 			if (time(NULL)<=dict[i].expiritionDate) {
-				snprintf(info, strlen(dict[i].ip) + sizeof(int) + 2, "%s:%d", dict[i].ip, dict[i].port);
+				snprintf(info, size, "%s:%d", dict[i].ip, dict[i].port);
 				return;
 			} else {
 				remover_dict(dict, dict[i].ip, dict[i].port);

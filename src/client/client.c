@@ -67,8 +67,15 @@ void userInteration() {
 	char *string, *found, aux[BUFFSIZE];
 	node *dict;
 	dict = malloc(sizeof(node)*100);
-	printf("Insira dados de autenticacao (AUTH <username> <password>):\n");
-	fgets(buffer, sizeof(buffer), stdin);
+	while(1) {
+		printf("Insira dados de autenticacao (AUTH <username> <password>):\n");
+		fgets(buffer, sizeof(buffer), stdin);
+		string = strdup(buffer);
+		found = strsep(&string, " ");
+		if (strcmp(found, "AUTH")==0)
+			break;
+	}
+	free(string);
 	buffer[strcspn(buffer, "\n")] = 0;
 	sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 	strncpy(aux, buffer, strlen(buffer)+1);
@@ -80,25 +87,20 @@ void userInteration() {
 	
 		while(1) {
 			//send messsage to server
-			//pthread_mutex_lock(&mutex);
 			fgets(buffer, sizeof(buffer), stdin);
 			if (buffer[2] == '2') {
 				handleP2P(buffer, dict);
 			} else {
 				buffer[strcspn(buffer, "\n")] = 0;
-				sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 				string = strdup(buffer);
 				found = strsep(&string, " ");
 
-				//TODO resto de funcionalidades (primeiro server)
-				/*if(strcmp(found, "AUTH")==0) {
-					recvfrom(fd, buffer, BUFFSIZE, 0, (struct sockaddr *) &addr, (socklen_t *) &slen);
-					printf("%s\n", buffer);
-				} else*/ 
+				
 				if(strcmp(found, "QUIT")==0) {
 					pthread_cancel(receive);
 					break;
-				}
+				} else 
+					sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 			}
 		}
 		pthread_join(receive, NULL);
@@ -109,14 +111,22 @@ void userInteration() {
 }
 
 void *receiveMsg(void *arguments) {
+	char *string, *found, info[2][500];
 	while(1) {
 		recvfrom(fd, buffer, BUFFSIZE, 0, (struct sockaddr *) &addr, (socklen_t *) &slen);
-		printf("%s\n", buffer);
-		//pthread_mutex_unlock(&mutex);
+		string = strdup(buffer);
+		
+		for (int i=0; i<2; i++) {
+			found = strsep(&string, " ");	//criar substrings
+        	strcpy(info[i], found);
+		}
+		
+		if (strcmp(info[1], "SENT")==0)
+			printf("%s\n", buffer);
 	}
+	free(string);
 }
 
-//TODO acabar
 void handleP2P(char *input, node *dict) {
 	int temp, count;
 	char *found, *string, info[3][500], aux1[500], ipPort[2][50];
@@ -126,27 +136,30 @@ void handleP2P(char *input, node *dict) {
         strcpy(info[count], found);
         count++;
 	}
-	free(string);
-	printf("%s\n", info[1]);
-	procurar_ip_port(dict, info[1], aux1);
-	printf("info - %s\n", aux1);
+	procurar_ip_port(dict, info[1], aux1, sizeof(aux1));
+	
 	if (aux1[0] == '\0') {
 		snprintf(buffer, BUFFSIZE, "REQUEST %s", info[1]);
 		sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 		usleep(100000);
 		string = strdup(buffer);
-		count=0;
-		while((found = strsep(&string, ":")) != NULL) {	//criar substrings
-        	strcpy(ipPort[count], found);
-        	count++;
-		}
-		free(string);
-		temp = (int) strtol(ipPort[1], (char **) NULL, 10);
-		adicionar_dict(dict, info[1], ipPort[0], temp);
-		addrP2P.sin_addr.s_addr = inet_addr(ipPort[0]);
-        addrP2P.sin_port=htons(temp);
-        snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
-        sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
+		
+		found = strsep(&string, " ");
+		if (strcmp(found, "REQUESTED")==0) {
+			count=0;
+			while((found = strsep(&string, ":")) != NULL) {	//criar substrings
+        		strcpy(ipPort[count], found);
+        		count++;
+			}
+			temp = (int) strtol(ipPort[1], (char **) NULL, 10);
+			printf("%d\n", temp);
+			adicionar_dict(dict, info[1], ipPort[0], temp);
+			addrP2P.sin_addr.s_addr = inet_addr(ipPort[0]);
+        	addrP2P.sin_port=htons(temp);
+        	snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
+        	sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
+        } else
+        	printf("REQUEST perdido, por favor envie outra vez a mensagem\n");
 	} else {
 		string = strdup(aux1);
 		count=0;
@@ -154,13 +167,13 @@ void handleP2P(char *input, node *dict) {
         	strcpy(ipPort[count], found);
         	count++;
 		}
-		free(string);
 		temp = (int) strtol(ipPort[1], (char **) NULL, 10);
 		addrP2P.sin_addr.s_addr = inet_addr(ipPort[0]);
         addrP2P.sin_port=htons(temp);
         snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
         sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
 	}
+	free(string);
 }
 
 void erro(char *msg) {
