@@ -30,8 +30,10 @@ int main(int argc, char *argv[]) {
 void clientes(char *port, char *file) {
 	node *dict;
 	dict = malloc(sizeof(node)*100);
-	char buffer[BUFFSIZE], *string, *found, info[7][128], fileLine[7][128];
-	int porto = (int) strtol(port, (char **) NULL, 10), count;
+	node_grupo *dict_grupo;
+	dict_grupo = malloc(sizeof(node_grupo)*100);
+	char buffer[BUFFSIZE], *string, *found, info[12][128], fileLine[7][128];
+	int porto = (int) strtol(port, (char **) NULL, 10), count, ip_grupo=1;
 	struct sockaddr_in clientAddr, newClientAddr;
 	char *newClient;
 	socklen_t slen = sizeof(newClientAddr);
@@ -178,11 +180,28 @@ void clientes(char *port, char *file) {
         		exist=false;
 
         	fclose(fptr);
+		} else if (strcmp(info[0], "CGRUPO")==0) {
+			char ip_aux[100];
+			sprintf(ip_aux, "224.0.0.%d", ip_grupo);
+			ip_grupo++;
+			criar_dict_grupo(dict_grupo, info[1], ip_aux);
+			for (int i=2; i<12; i++) {
+				if(info[i][0]!='\0') {
+					adicionar_dict_grupo(dict_grupo, info[1], info[i]);
+				} else
+					break;
+			}
+			sendto(fdClient, ip_aux, strlen(ip_aux)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+
+		} else if (strcmp(info[0], "IPGRUPO")==0) {
+			char *aux = procurar_grupo_ip(dict_grupo, info[1]);
+			sendto(fdClient, aux, strlen(aux)+1, 0, (struct sockaddr *) &newClientAddr, slen);
 		} else if (strcmp(info[0], "QUIT")==0) {
 			remover_dict(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port));
 		}
 	}
 	free(dict);
+	free(dict_grupo);
 }
 
 void config(char *port, char *file) {

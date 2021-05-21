@@ -15,8 +15,10 @@
 
 #define BUFFSIZE 1024	// Tamanho do buffer
 
+//TODO DESCOBRIR CAUSA DE BUG NO SP2P, OS CLIENTES FICAM CONECTADOS PERMANENTEMENTE
+
 int fd;
-struct sockaddr_in addr, addrP2P;
+struct sockaddr_in addr, addrP2P, addrGrupo;
 char buffer[BUFFSIZE];
 pthread_t receive;
 socklen_t slen = sizeof(addr);
@@ -75,7 +77,6 @@ void userInteration() {
 		if (strcmp(found, "AUTH")==0)
 			break;
 	}
-	free(string);
 	buffer[strcspn(buffer, "\n")] = 0;
 	sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 	strncpy(aux, buffer, strlen(buffer)+1);
@@ -88,20 +89,19 @@ void userInteration() {
 		while(1) {
 			//send messsage to server
 			fgets(buffer, sizeof(buffer), stdin);
-			if (buffer[2] == '2') {
-				handleP2P(buffer, dict);
-			} else {
-				buffer[strcspn(buffer, "\n")] = 0;
-				string = strdup(buffer);
-				found = strsep(&string, " ");
+			
+			buffer[strcspn(buffer, "\n")] = 0;
+			string = strdup(buffer);
+			found = strsep(&string, " ");
 
-				
-				if(strcmp(found, "QUIT")==0) {
-					pthread_cancel(receive);
-					break;
-				} else 
-					sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
-			}
+			if(strcmp(found, "QUIT")==0) {
+				sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
+				pthread_cancel(receive);
+				break;
+			} else if (strcmp(found, "SP2P")==0) {
+				handleP2P(buffer, dict);
+			} else 
+				sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 		}
 		pthread_join(receive, NULL);
 	} else
@@ -111,20 +111,10 @@ void userInteration() {
 }
 
 void *receiveMsg(void *arguments) {
-	char *string, *found, info[2][500];
 	while(1) {
 		recvfrom(fd, buffer, BUFFSIZE, 0, (struct sockaddr *) &addr, (socklen_t *) &slen);
-		string = strdup(buffer);
-		
-		for (int i=0; i<2; i++) {
-			found = strsep(&string, " ");	//criar substrings
-        	strcpy(info[i], found);
-		}
-		
-		if (strcmp(info[1], "SENT")==0)
-			printf("%s\n", buffer);
+		printf("%s\n", buffer);
 	}
-	free(string);
 }
 
 void handleP2P(char *input, node *dict) {
@@ -133,8 +123,8 @@ void handleP2P(char *input, node *dict) {
 	string = strdup(input);
 	count=0;
 	while((found = strsep(&string, " ")) != NULL) {	//criar substrings
-        strcpy(info[count], found);
-        count++;
+		strcpy(info[count], found);
+		count++;
 	}
 	procurar_ip_port(dict, info[1], aux1, sizeof(aux1));
 	
@@ -148,30 +138,30 @@ void handleP2P(char *input, node *dict) {
 		if (strcmp(found, "REQUESTED")==0) {
 			count=0;
 			while((found = strsep(&string, ":")) != NULL) {	//criar substrings
-        		strcpy(ipPort[count], found);
-        		count++;
+				strcpy(ipPort[count], found);
+				count++;
 			}
 			temp = (int) strtol(ipPort[1], (char **) NULL, 10);
 			printf("%d\n", temp);
 			adicionar_dict(dict, info[1], ipPort[0], temp);
 			addrP2P.sin_addr.s_addr = inet_addr(ipPort[0]);
-        	addrP2P.sin_port=htons(temp);
-        	snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
-        	sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
-        } else
-        	printf("REQUEST perdido, por favor envie outra vez a mensagem\n");
+			addrP2P.sin_port=htons(temp);
+			snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
+			sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
+		} else
+			printf("REQUEST perdido, por favor envie outra vez a mensagem\n");
 	} else {
 		string = strdup(aux1);
 		count=0;
 		while((found = strsep(&string, ":")) != NULL) {	//criar substrings
-        	strcpy(ipPort[count], found);
-        	count++;
+			strcpy(ipPort[count], found);
+			count++;
 		}
 		temp = (int) strtol(ipPort[1], (char **) NULL, 10);
 		addrP2P.sin_addr.s_addr = inet_addr(ipPort[0]);
-        addrP2P.sin_port=htons(temp);
-        snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
-        sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
+		addrP2P.sin_port=htons(temp);
+		snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
+		sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
 	}
 	free(string);
 }
@@ -186,8 +176,8 @@ void getMyName(char *aux) {
 	char *found, *string, info[3][512];
 	string = strdup(aux);
 	while((found = strsep(&string, " ")) != NULL) {	//criar substrings
-        strncpy(info[count], found, strlen(found)+1);
-        count++;
+		strncpy(info[count], found, strlen(found)+1);
+		count++;
 	}
 	strncpy(whoIam, info[1], strlen(info[1])+1);
 	free(string);
