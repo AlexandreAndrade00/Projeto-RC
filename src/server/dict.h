@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#define NUM_MAX_GRUPOS 100
-#define NUM_MAX_PART 10
+#include "server.h"
 
 typedef struct {
 	char nome[50];
@@ -23,6 +22,7 @@ void adicionar_dict(node *dict, char *nome, char *ip, int port, char *server, ch
 int procurar_port(node *dict, char *ip);
 char* procurar_name(node *dict, char *ip, int port);
 void remover_dict(node *dict, char *ip, int port);
+bool isAuthed(node *dict, char* ip, int port);
 
 void criar_dict_grupo(node_grupo *dict, char *nome, char *ip);
 void adicionar_dict_grupo(node_grupo *dict, char *nome_grupo, char* nome_participante);

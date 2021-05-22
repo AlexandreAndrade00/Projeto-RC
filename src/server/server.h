@@ -12,6 +12,9 @@
 #include <search.h>
 
 #define BUFFSIZE 1024
+#define NUM_MAX_GRUPOS 100
+#define NUM_MAX_USERS 100
+#define NUM_MAX_PART 10
 #define ADDRESS "10.90.0.1"
 
 void config();
