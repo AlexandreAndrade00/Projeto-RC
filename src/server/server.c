@@ -33,7 +33,7 @@ void clientes(char *port, char *file) {
 	node_grupo *dict_grupo;
 	dict_grupo = malloc(sizeof(node_grupo)*NUM_MAX_GRUPOS);  					//alocacao de memoria para guardar grupos
 	char buffer[BUFFSIZE], *string, *found, info[12][128], fileLine[7][128];	
-	int porto = (int) strtol(port, (char **) NULL, 10), count;
+	int porto = (int) strtol(port, (char **) NULL, 10), count, ip_grupo=1;
 	struct sockaddr_in clientAddr, newClientAddr;
 	char *newClient;
 	socklen_t slen = sizeof(newClientAddr);
@@ -192,7 +192,7 @@ void clientes(char *port, char *file) {
         		printf("Utilizador nao autenticado!\n"); 
 
         //TODO
-		} /* else if (strcmp(info[0], "CGRUPO")==0) {
+		} else if (strcmp(info[0], "CGRUPO")==0) {
 			if (isAuthed(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))==true) {
 				char ip_aux[100];
 				sprintf(ip_aux, "224.0.0.%d", ip_grupo);
@@ -215,7 +215,7 @@ void clientes(char *port, char *file) {
 				sendto(fdClient, aux, strlen(aux)+1, 0, (struct sockaddr *) &newClientAddr, slen);
 			} else
 				printf("Utilizador nao autenticado!\n");
-		}*/ 
+		} 
 		else if (strcmp(info[0], "QUIT")==0) {
 			remover_dict(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port));
 		}

@@ -15,8 +15,9 @@
 
 #define BUFFSIZE 1024	// Tamanho do buffer
 
-int fd, fd1;
-struct sockaddr_in addr, addrP2P, addrReceive;
+int fd;
+struct sockaddr_in addr, addrP2P, addrReceive, addrGroup;
+struct in_addr localInterface;
 struct ip_mreq group;
 char buffer[BUFFSIZE];
 pthread_t receive, receiveGrp;
@@ -28,7 +29,7 @@ void *receiveMsg(void *arguments);
 void userInteration();
 void getMyName(char *aux);
 void handleP2P(char *input, node *dict);
-//void handleGrupo(char *input);
+void handleGrupo(char *input);
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
@@ -50,11 +51,24 @@ int main(int argc, char *argv[]) {
 	addr.sin_addr.s_addr = ((struct in_addr *)(hostPtr->h_addr))->s_addr;
 	addr.sin_port = htons(porto);
 
+	addrGroup.sin_family = AF_INET;
+	addrGroup.sin_port = htons(9005);
+
 	if ((fd = socket(AF_INET,SOCK_DGRAM,0)) == -1)
 		erro("socket");
 
-	if ((fd1 = socket(AF_INET,SOCK_DGRAM,0)) == -1)
-		erro("socket");
+	char loopch=0;
+    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&loopch, sizeof(loopch)) < 0) {
+    	perror("setting IP_MULTICAST_LOOP:");
+    	close(fd);
+    	exit(-1);
+    }
+
+    localInterface.s_addr = INADDR_ANY;
+	if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, (char *)&localInterface, sizeof(localInterface)) < 0) {
+    	perror("setting local interface");
+    	exit(-1);
+	}
 		
 	printf("----------------------COMANDOS--------------------\n\n");
 	printf("AUTH - AUTENTICAR NO SERVER\n");
@@ -103,14 +117,20 @@ void userInteration() {
 				break;
 			} else if (strcmp(found, "SP2P")==0) {
 				handleP2P(buffer, dict);
-			} /* else if (strcmp(found, "SGRUPO")==0) {
+			} else if (strcmp(found, "SGRUPO")==0) {
 				handleGrupo(buffer);
 			} else if (strcmp(found, "IPGRUPO")==0) {
 				sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 				usleep(100000);
 				char *aux = buffer;
-
-			} */ else 
+				group.imr_multiaddr.s_addr = inet_addr(aux);
+  				group.imr_interface.s_addr = INADDR_ANY;
+  				if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0) {
+    				perror("adding multicast group");
+    				close(fd);
+    				exit(1);
+  				}
+			} else 
 				sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
 		}
 		pthread_join(receive, NULL);
@@ -176,11 +196,24 @@ void handleP2P(char *input, node *dict) {
 	free(string);
 }
 
-/*
+
 void handleGrupo(char *input) {
-	
+	int count;
+	char *found, *string, info[3][500];
+	string = strdup(input);
+	count=0;
+	while((found = strsep(&string, " ")) != NULL) {	//criar substrings
+		strcpy(info[count], found);
+		count++;
+	}
+
+	addrGroup.sin_addr.s_addr = inet_addr(info[1]);
+
+	if (sendto(fd, info[2], strlen(info[2])+1, 0, (struct sockaddr*)&addrGroup, sizeof(addrGroup)) < 0) {
+    	perror("sending datagram message");
+	}
 }
-*/
+
 
 void erro(char *msg) {
 	printf("Erro: %s\n", msg);
