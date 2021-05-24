@@ -132,8 +132,14 @@ void clientes(char *port, char *file) {
         				exist=true;
         				porto = procurar_port(dict, fileLine[1]);
         				if (porto==0) {
-        					printf("Utilizador nao autenticado no servidor\n");
+        					strcpy(buffer, "Utilizador com que pretende comunicar nao se encontra autenticado no servidor!\n");
+        					sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
 							break;
+        				}
+        				if (strcmp(fileLine[3], "no")==0) {
+        					strcpy(buffer, "Nao tem permissoes para efetuar este tipo de comunicacao!\n");
+        					sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+        					break;
         				}
         				newClient = inet_ntoa(newClientAddr.sin_addr);
         				char *aux = procurar_name(dict, newClient, ntohs(newClientAddr.sin_port));
@@ -172,8 +178,14 @@ void clientes(char *port, char *file) {
         				exist=true;
         				porto = procurar_port(dict, fileLine[1]);
         				if (porto==0) {
-        					printf("Utilizador nao autenticado no servidor\n");
+        					strcpy(buffer, "Utilizador com que pretende comunicar nao se encontra autenticado no servidor!\n");
+        					sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
 							break;
+        				}
+        				if (strcmp(fileLine[4], "no")==0) {
+        					strcpy(buffer, "Nao tem permissoes para efetuar este tipo de comunicacao!\n");
+        					sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+        					break;
         				}
         				printf("A enviar ip e porto de utilizador requisitado!\n");
         				sprintf(buffer, "REQUESTED %s:%d", fileLine[1], porto);

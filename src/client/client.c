@@ -15,9 +15,8 @@
 
 #define BUFFSIZE 1024	// Tamanho do buffer
 
-int fd;
+int fd, fd1;
 struct sockaddr_in addr, addrP2P, addrReceive, addrGroup;
-struct in_addr localInterface;
 struct ip_mreq group;
 char buffer[BUFFSIZE];
 pthread_t receive, receiveGrp;
@@ -26,6 +25,7 @@ char whoIam[512];
 
 void erro(char *msg);
 void *receiveMsg(void *arguments);
+void *receiveMsgGrp(void *arguments);
 void userInteration();
 void getMyName(char *aux);
 void handleP2P(char *input, node *dict);
@@ -52,22 +52,28 @@ int main(int argc, char *argv[]) {
 	addr.sin_port = htons(porto);
 
 	addrGroup.sin_family = AF_INET;
+	addrGroup.sin_addr.s_addr  = htonl(INADDR_ANY);
 	addrGroup.sin_port = htons(9005);
+
+	group.imr_interface.s_addr = htonl(INADDR_ANY);
+
 
 	if ((fd = socket(AF_INET,SOCK_DGRAM,0)) == -1)
 		erro("socket");
 
-	char loopch=0;
-    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, (char *)&loopch, sizeof(loopch)) < 0) {
-    	perror("setting IP_MULTICAST_LOOP:");
-    	close(fd);
-    	exit(-1);
-    }
+	if ((fd1 = socket(AF_INET,SOCK_DGRAM,0)) == -1)
+		erro("socket");
 
-    localInterface.s_addr = INADDR_ANY;
-	if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, (char *)&localInterface, sizeof(localInterface)) < 0) {
-    	perror("setting local interface");
+    int multicastTTL = 255;
+	if (setsockopt(fd1, IPPROTO_IP, IP_MULTICAST_TTL, (void *) &multicastTTL, sizeof(multicastTTL)) < 0) {
+    	perror("socket opt");
     	exit(-1);
+	}
+
+	if (bind(fd1, (struct sockaddr*)&addrGroup, sizeof(addrGroup))) {
+    	perror("binding datagram socket");
+    	close(fd1);
+    	exit(1);
 	}
 		
 	printf("----------------------COMANDOS--------------------\n\n");
@@ -102,6 +108,7 @@ void userInteration() {
 		getMyName(aux);
 		printf("%s\n", buffer);
 		pthread_create(&receive, NULL, receiveMsg, NULL);
+		pthread_create(&receiveGrp, NULL, receiveMsgGrp, NULL);
 	
 		while(1) {
 			//send messsage to server
@@ -124,8 +131,7 @@ void userInteration() {
 				usleep(100000);
 				char *aux = buffer;
 				group.imr_multiaddr.s_addr = inet_addr(aux);
-  				group.imr_interface.s_addr = INADDR_ANY;
-  				if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0) {
+  				if (setsockopt(fd1, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0) {
     				perror("adding multicast group");
     				close(fd);
     				exit(1);
@@ -143,6 +149,13 @@ void userInteration() {
 void *receiveMsg(void *arguments) {
 	while(1) {
 		recvfrom(fd, buffer, BUFFSIZE, 0, (struct sockaddr *) &addrReceive, (socklen_t *) &slen);
+		printf("%s\n", buffer);
+	}
+}
+
+void *receiveMsgGrp(void *arguments) {
+	while(1) {
+		recvfrom(fd1, buffer, BUFFSIZE, 0, (struct sockaddr *) &addrReceive, (socklen_t *) &slen);
 		printf("%s\n", buffer);
 	}
 }
@@ -209,7 +222,7 @@ void handleGrupo(char *input) {
 
 	addrGroup.sin_addr.s_addr = inet_addr(info[1]);
 
-	if (sendto(fd, info[2], strlen(info[2])+1, 0, (struct sockaddr*)&addrGroup, sizeof(addrGroup)) < 0) {
+	if (sendto(fd1, info[2], strlen(info[2])+1, 0, (struct sockaddr*)&addrGroup, sizeof(addrGroup)) < 0) {
     	perror("sending datagram message");
 	}
 }
