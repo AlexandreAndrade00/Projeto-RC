@@ -23,3 +23,4 @@ void *receiveMsgGrp(void *arguments);
 void userInteration();
 void getMyName(char *aux);
 void handleGrupo();
+void handleP2P();

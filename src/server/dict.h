@@ -23,6 +23,7 @@ int procurar_port(node *dict, char *ip);
 char* procurar_name(node *dict, char *ip, int port);
 void remover_dict(node *dict, char *ip, int port);
 bool isAuthed(node *dict, char* ip, int port);
+bool isAuthed_byName(node *dict, char *nome);
 bool groupPermission(node *dict, char *ip, int port);
 bool sendPermission(node *dict, char *ip, int port);
 bool sp2pPermission(node *dict, char *ip, int port);

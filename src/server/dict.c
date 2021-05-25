@@ -16,17 +16,17 @@ void adicionar_dict(node *dict, char *nome, char *ip, int port, char *server, ch
     strncpy(dict[i].ip, ip, strlen(ip)+1);
     dict[i].port=port;
     
-    if (strcmp(server, "yes"))
+    if (strcmp(server, "yes")==0)
         dict[i].server = true;
     else 
         dict[i].server = false;
         
-    if (strcmp(p2p, "yes"))
+    if (strcmp(p2p, "yes")==0)
         dict[i].p2p = true;
     else 
         dict[i].p2p = false;
         
-    if (strcmp(grupo, "yes"))
+    if (strcmp(grupo, "yes\n")==0)
         dict[i].grupo = true;
     else 
         dict[i].grupo = false;
@@ -179,4 +179,12 @@ bool sp2pPermission(node *dict, char *ip, int port) {
 		}
 	}
 	return false;
+}
+
+bool isAuthed_byName(node *dict, char *nome) {
+    for (int i=0; i<NUM_MAX_USERS; i++) {
+        if (strcmp(dict[i].nome, nome)==0)
+            return true;
+    }
+    return false;
 }
