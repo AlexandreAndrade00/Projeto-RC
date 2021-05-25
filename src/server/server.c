@@ -207,7 +207,7 @@ void clientes(char *port, char *file) {
 		} else if (strcmp(info[0], "CGRUPO")==0) {
 			if (isAuthed(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))==true) {
 				char ip_aux[100];
-				sprintf(ip_aux, "224.0.0.%d", ip_grupo);
+				sprintf(ip_aux, "224.0.2.%d", ip_grupo);
 				ip_grupo++;
 				criar_dict_grupo(dict_grupo, info[1], ip_aux);
 				for (int i=2; i<12; i++) {
