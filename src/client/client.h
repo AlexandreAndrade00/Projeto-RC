@@ -11,6 +11,7 @@
 #include <semaphore.h>
 #include <time.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 #define BUFFSIZE 1024   // Tamanho do buffer
 #define MAX_USERS_SAVED 100
@@ -21,4 +22,4 @@ void *receiveMsg(void *arguments);
 void *receiveMsgGrp(void *arguments);
 void userInteration();
 void getMyName(char *aux);
-void handleGrupo(char *input);
+void handleGrupo();

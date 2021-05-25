@@ -44,7 +44,7 @@ void procurar_ip_grp(nodeGrp *dict, char *nome, char *ip) {
 
 void procurar_ip_port(node *dict, char* nome, char *info, int size) {
 	int i=0;
-	while(dict[i].port!=0) {
+	while(dict[i++].port!=0) {
 		if (strcmp(nome, dict[i].nome)==0) {
 			if (time(NULL)<=dict[i].expiritionDate) {
 				snprintf(info, size, "%s:%d", dict[i].ip, dict[i].port);

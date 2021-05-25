@@ -117,48 +117,48 @@ void clientes(char *port, char *file) {
                 
         } else if (strcmp(info[0], "SEND")==0) {
             if (isAuthed(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))==true) {
-                fptr=fopen(file, "r");
+            	if (!sendPermission(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))) {
+                    strcpy(buffer, "Nao tem permissoes para efetuar este tipo de comunicacao!\n");
+                	sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+                } else {
+                	fptr=fopen(file, "r");
             
-                while(fgets(buffer, sizeof(buffer), fptr) != NULL) {
-                    string = strdup(buffer);
-                
-                    count=0;
-                    while((found = strsep(&string, " ")) != NULL) {	//criar substrings
-                        strcpy(fileLine[count], found);
-                        count++;
-                    }
-                
-                    if (strcmp(fileLine[0], info[1])==0) {
-                        exist=true;
-                        porto = procurar_port(dict, fileLine[1]);
-                        if (porto==0) {
-                            strcpy(buffer, "Utilizador com que pretende comunicar nao se encontra autenticado no servidor!\n");
-                            sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
-                            break;
-                        }
-                        if (strcmp(fileLine[3], "no")==0) {
-                            strcpy(buffer, "Nao tem permissoes para efetuar este tipo de comunicacao!\n");
-                            sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
-                            break;
-                        }
-                        newClient = inet_ntoa(newClientAddr.sin_addr);
-                        char *aux = procurar_name(dict, newClient, ntohs(newClientAddr.sin_port));
-                        sprintf(buffer, "%s SENT %s", aux, info[2]);
-                        newClientAddr.sin_addr.s_addr = inet_addr(fileLine[1]);
-                        newClientAddr.sin_port=htons(porto);
-                        printf("A redirecionar mensagem para %s:%d\n", fileLine[1], porto);
-                        sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
-                        break;
-                    }
-                }
-            
-                if (exist==false) {
-                    strcpy(buffer, "Nao esta registado!\n");
-                    sendto(fdClient, buffer, BUFFSIZE, 0, (struct sockaddr *) &newClientAddr, slen);
-                } else
-                    exist=false;
+	                while(fgets(buffer, sizeof(buffer), fptr) != NULL) {
+	                    string = strdup(buffer);
+	                
+	                    count=0;
+	                    while((found = strsep(&string, " ")) != NULL) {	//criar substrings
+	                        strcpy(fileLine[count], found);
+	                        count++;
+	                    }
+	                
+	                    if (strcmp(fileLine[0], info[1])==0) {
+	                        exist=true;
+	                        porto = procurar_port(dict, fileLine[1]);
+	                        if (porto==0) {
+	                            strcpy(buffer, "Utilizador com que pretende comunicar nao se encontra autenticado no servidor!\n");
+	                            sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+	                            break;
+	                        }
+	                        newClient = inet_ntoa(newClientAddr.sin_addr);
+	                        char *aux = procurar_name(dict, newClient, ntohs(newClientAddr.sin_port));
+	                        sprintf(buffer, "%s SENT %s", aux, info[2]);
+	                        newClientAddr.sin_addr.s_addr = inet_addr(fileLine[1]);
+	                        newClientAddr.sin_port=htons(porto);
+	                        printf("A redirecionar mensagem para %s:%d\n", fileLine[1], porto);
+	                        sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+	                        break;
+	                    }
+	                }
+	            
+	                if (exist==false) {
+	                    strcpy(buffer, "Nao esta registado!\n");
+	                    sendto(fdClient, buffer, BUFFSIZE, 0, (struct sockaddr *) &newClientAddr, slen);
+	                } else
+	                    exist=false;
 
-                fclose(fptr);
+	                fclose(fptr);
+                }
             } else
                 printf("Utilizador nao autenticado!\n");
         } else if (strcmp(info[0], "REQUEST")==0) {
@@ -176,14 +176,14 @@ void clientes(char *port, char *file) {
                 
                     if (strcmp(fileLine[0], info[1])==0) {
                         exist=true;
-                        porto = procurar_port(dict, fileLine[1]);
-                        if (porto==0) {
-                            strcpy(buffer, "Utilizador com que pretende comunicar nao se encontra autenticado no servidor!\n");
+                        if (sp2pPermission(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))==false) {
+                            strcpy(buffer, "Nao tem permissoes para efetuar este tipo de comunicacao!\n");
                             sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
                             break;
                         }
-                        if (strcmp(fileLine[4], "no")==0) {
-                            strcpy(buffer, "Nao tem permissoes para efetuar este tipo de comunicacao!\n");
+                        porto = procurar_port(dict, fileLine[1]);
+                        if (porto==0) {
+                            strcpy(buffer, "Utilizador com que pretende comunicar nao se encontra autenticado no servidor!\n");
                             sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
                             break;
                         }
@@ -206,25 +206,40 @@ void clientes(char *port, char *file) {
         //TODO
         } else if (strcmp(info[0], "CGRUPO")==0) {
             if (isAuthed(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))==true) {
-                char ip_aux[100];
-                sprintf(ip_aux, "224.0.2.%d", ip_grupo);
-                ip_grupo++;
-                criar_dict_grupo(dict_grupo, info[1], ip_aux);
-                for (int i=2; i<12; i++) {
-                    if(info[i][0]!='\0') {
-                        adicionar_dict_grupo(dict_grupo, info[1], info[i]);
-                    } else
-                        break;
+            	if (groupPermission(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))==true) {
+                	char ip_aux[100];
+                	sprintf(ip_aux, "224.0.2.%d", ip_grupo);
+                	ip_grupo++;
+                	criar_dict_grupo(dict_grupo, info[1], ip_aux);
+                	for (int i=2; i<12; i++) {
+                    	if(info[i][0]!='\0') {
+                        	adicionar_dict_grupo(dict_grupo, info[1], info[i]);
+                    	} else
+                        	break;
+                	}
+                	sendto(fdClient, ip_aux, strlen(ip_aux)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+                } else {
+                	strcpy(buffer, "Utilizador nao tem permissao para realizar este tipo de comunicacao!\n");
+                	sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
                 }
-                sendto(fdClient, ip_aux, strlen(ip_aux)+1, 0, (struct sockaddr *) &newClientAddr, slen);
             } else
                 printf("Utilizador nao autenticado!\n");
 
         //TODO
-        } else if (strcmp(info[0], "IPGRUPO")==0) {
+        } else if (strcmp(info[0], "JGRUPO")==0) {
             if (isAuthed(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))==true) {
-                char *aux = procurar_grupo_ip(dict_grupo, info[1]);
-                sendto(fdClient, aux, strlen(aux)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+            	if (groupPermission(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port))==true) {
+            		if(belongsGroup(dict_grupo, info[1], procurar_name(dict, inet_ntoa(newClientAddr.sin_addr), ntohs(newClientAddr.sin_port)))==true) {
+                		sprintf(buffer, "REQUESTED %s", procurar_grupo_ip(dict_grupo, info[1]));
+                		sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+            		} else {
+            			strcpy(buffer, "Utilizador nao tem permissao para se juntar a esse grupo!\n");
+                		sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+					}
+				} else {
+					strcpy(buffer, "Utilizador nao tem permissao para realizar este tipo de comunicacao!\n");
+                	sendto(fdClient, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &newClientAddr, slen);
+				}
             } else
                 printf("Utilizador nao autenticado!\n");
         } 
