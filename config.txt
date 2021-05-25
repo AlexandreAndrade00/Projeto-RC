@@ -31,6 +31,14 @@ ip nat inside source list 1 interface f1/0 overload
 ip nat inside source static tcp 10.90.0.1 9002 193.136.212.227 9002
 ip nat inside source static udp 10.90.0.1 9003 193.136.212.227 9003
 exit
+conf t
+ip multicast-routing
+interface Ethernet 0/0
+ip pim sparse-dense-mode
+exit
+interface FastEthernet 1/0
+ip pim sparse-dense-mode
+end
 --
 
 
@@ -69,6 +77,14 @@ no shut
 exit
 ip route 193.136.212.192 255.255.255.224 193.136.212.226
 exit
+conf t
+ip multicast-routing
+interface Ethernet 0/0
+ip pim sparse-dense-mode
+exit
+interface FastEthernet 1/0
+ip pim sparse-dense-mode
+end
 --
 
 
@@ -108,4 +124,12 @@ no shut
 exit
 ip route 193.136.212.128 255.255.255.192 193.136.212.225
 exit
+conf t
+ip multicast-routing
+interface Ethernet 0/0
+ip pim sparse-dense-mode
+exit
+interface FastEthernet 1/0
+ip pim sparse-dense-mode
+end
 --

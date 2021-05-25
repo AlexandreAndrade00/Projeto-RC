@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <stdbool.h>
 #include <search.h>
+#include <regex.h>
 
 #define BUFFSIZE 1024
 #define NUM_MAX_GRUPOS 100
@@ -22,3 +23,5 @@ void processAdmin(int admin, struct sockaddr_in adminAddr, char *file);
 void erro(char *msg);
 void signalHandler(int sig);
 void clientes();
+bool check_regex(const char *pattern, char *string);
+bool isUsernameValid(char* file, char* username);

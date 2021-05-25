@@ -4,18 +4,18 @@
 #include "server.h"
 
 typedef struct {
-	char nome[50];
-	char ip[50];
-	int port;
-	bool server;
-	bool p2p;
-	bool grupo;
+    char nome[50];
+    char ip[50];
+    int port;
+    bool server;
+    bool p2p;
+    bool grupo;
 } node;
 
 typedef struct {
-	char nome[50];
-	char ip[50];
-	char participantes[10][500];
+    char nome[50];
+    char ip[50];
+    char participantes[10][500];
 } node_grupo;
 
 void adicionar_dict(node *dict, char *nome, char *ip, int port, char *server, char *p2p, char *grupo);
