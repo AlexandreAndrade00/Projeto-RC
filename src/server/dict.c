@@ -1,6 +1,5 @@
 #include "dict.h"
 
-//TODO TROCAR TODOS OS WHILES POR CICLOS FOR COM LIMITES DEFINIDOS NO HEADER FILE
 
 void adicionar_dict(node *dict, char *nome, char *ip, int port, char *server, char *p2p, char *grupo) {
     int i=0;
@@ -33,6 +32,7 @@ void adicionar_dict(node *dict, char *nome, char *ip, int port, char *server, ch
         dict[i].grupo = false;
 }
 
+
 void criar_dict_grupo(node_grupo *dict, char *nome, char *ip) {
     int i=0;
 
@@ -47,6 +47,7 @@ void criar_dict_grupo(node_grupo *dict, char *nome, char *ip) {
     strncpy(dict[i].nome, nome, strlen(nome)+1);
     strncpy(dict[i].ip, ip, strlen(ip)+1);
 }
+
 
 void adicionar_dict_grupo(node_grupo *dict, char *nome_grupo, char* nome_participante) {
     int i=0;

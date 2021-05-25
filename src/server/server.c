@@ -277,13 +277,13 @@ void config(char *port, char *file) {
 }
 
 void processAdmin(int admin, struct sockaddr_in adminAddr, char *file) {
-    char buffer[BUFFSIZE], *string, *found, info[7][BUFFSIZE], aux[BUFFSIZE];
+    char buffer[BUFFSIZE], *string, *found, info[7][BUFFSIZE], aux[3*BUFFSIZE];
     int count;
     
     while(1) {
         read(admin, buffer, BUFFSIZE);	//esperar mensagens do client
-        //printf("%s\n", buffer);				//print para debug
-        string = strdup(buffer);				//partir string em substrings
+        //printf("%s\n", buffer); //print para debug
+        string = strdup(buffer); //partir string em substrings
         
         count=0;
         while((found = strsep(&string, " ")) != NULL) {	//criar substrings
@@ -395,5 +395,38 @@ void signalHandler(int sig) {
     char aux = 1;
     setsockopt(fdConfig, SOL_SOCKET, SO_REUSEADDR,&aux, sizeof(aux));
     exit(0);
+}
+
+bool check_regex(const char *pattern, char *string) {
+    regex_t re;
+    //complie regex
+    if (regcomp(&re, pattern, REG_EXTENDED) != 0){
+        printf("Erro: Compiling regex expression\n");
+        return false;
+    }
+
+    //test regex against string. regexec() < 0 -> doesn't match
+    if (regexec(&re, string, 0, NULL, 0) != 0){
+        regfree(&re);
+        return false;
+    }
+    regfree(&re);
+    return true;
+}
+
+bool isUsernameValid(char* file, char* username){
+    char buffer[BUFFSIZE], *found, *string;
+    fptr = fopen(file, "r");
+    while(fgets(buffer, sizeof(buffer), fptr) != NULL) {
+        string = strdup(buffer);
+        found = strsep(&string, " "); //ir buscar primeira substring 
+        if (strcmp(found, username) == 0){
+            fclose(fptr);
+            return false;
+        }
+    }
+
+    fclose(fptr);
+    return true;
 }
 

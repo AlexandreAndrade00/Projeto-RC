@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     addr.sin_port = htons((int) strtol(argv[2], (char **) NULL, 10));
 
     //abrir socket e realizar conexao
-    if((fd = socket(AF_INET,SOCK_STREAM,0)) == -1)
+    if((fd = socket(AF_INET, SOCK_STREAM,0)) == -1)
         erro("socket");
     if(connect(fd,(struct sockaddr *)&addr,sizeof (addr)) < 0)
         erro("Connect");
