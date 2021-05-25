@@ -131,3 +131,52 @@ bool isAuthed(node *dict, char* ip, int port) {
     }
     return false;
 }
+
+bool belongsGroup(node_grupo *dict, char *nome_grupo, char *nome_participante) {
+	for (int i=0; i<NUM_MAX_GRUPOS; i++) {
+		if (strcmp(dict[i].nome, nome_grupo)==0) {
+			for (int j=0; j<NUM_MAX_PART; j++) {
+				if (strcmp(dict[i].participantes[j], nome_participante)==0)
+					return true;
+			}
+			return false;
+		}
+	}
+	return false;
+}
+
+bool groupPermission(node *dict, char *ip, int port) {
+	for (int i=0; i<NUM_MAX_USERS; i++) {
+		if (strcmp(dict[i].ip, ip)==0 && dict[i].port==port) {
+			if (dict[i].grupo==true)
+				return true;
+			else
+				return false;
+		}
+	}
+	return false;
+}
+
+bool sendPermission(node *dict, char *ip, int port) {
+	for (int i=0; i<NUM_MAX_USERS; i++) {
+		if (strcmp(dict[i].ip, ip)==0 && dict[i].port==port) {
+			if (dict[i].server==true)
+				return true;
+			else
+				return false;
+		}
+	}
+	return false;
+}
+
+bool sp2pPermission(node *dict, char *ip, int port) {
+	for (int i=0; i<NUM_MAX_USERS; i++) {
+		if (strcmp(dict[i].ip, ip)==0 && dict[i].port==port) {
+			if (dict[i].p2p==true)
+				return true;
+			else
+				return false;
+		}
+	}
+	return false;
+}

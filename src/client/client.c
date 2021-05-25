@@ -11,14 +11,18 @@ socklen_t slen = sizeof(addr);
 char whoIam[512];
 nodeGrp *dictGrp;
 node *dict;
+sem_t mutex;
+bool waitingServer=false;
 
-void handleP2P(char *input, node *dict);
+void handleP2P();
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
         printf("cliente <server host> <port>\n");
         exit(-1);
     }
+
+    sem_init(&mutex, 0, 0);
     
     int porto = (int) strtol(argv[2], (char **) NULL, 10);
     
@@ -120,6 +124,7 @@ void userInteration() {
                 sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
                 pthread_cancel(receive);
                 pthread_cancel(receiveGrp);
+                sem_destroy(&mutex);
                 break;
             } else if (strcmp(info[0], "SEND")==0) {
                 if (count!=3)
@@ -130,18 +135,26 @@ void userInteration() {
                 if (count!=3)
                     printf("SP2P <user> <message>\n");
                 else
-                    handleP2P(buffer, dict);
+                    handleP2P();
+            } else if (strcmp(info[0], "CGRUPO")==0) {
+                if (count<3)
+                    printf("CGRUPO <nome_grupo> <participante1> <participante2>...\n");
+                else
+                    sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
             } else if (strcmp(info[0], "SGRUPO")==0) {
                 if (count!=3)
                     printf("SGRUPO <group_name> <message>\n");
                 else
-                    handleGrupo(buffer);
+                    handleGrupo();
             } else if (strcmp(info[0], "JGRUPO")==0) {
                 if (count!=2)
                     printf("JGRUPO <group_name>\n");
                 else {
                     sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
-                    usleep(100000);
+
+                    waitingServer=true;
+                    sem_wait(&mutex);
+                    waitingServer=false;
 
                     strcpy(aux, info[1]);
                     string=strdup(buffer);
@@ -160,7 +173,7 @@ void userInteration() {
                         }
                         adicionar_dict_grp(dictGrp, aux, info[1]);
                     } else
-                        printf("Comunicacao interrompida, por favor tente novamente!\n");
+                        printf("Algo aconteceu...\n");
                 }
             } else
                 printf("Comando desconhecido!\n");
@@ -179,11 +192,13 @@ void *receiveMsg(void *arguments) {
     char *string, *found;
     while(1) {
         recvfrom(fd, buffer, BUFFSIZE, 0, (struct sockaddr *) &addrReceive, (socklen_t *) &slen);
-        string = strdup(buffer);
+        if (waitingServer==true)
+            sem_post(&mutex);
+        string=strdup(buffer);
         found = strsep(&string, " ");
-        if (strcmp(found, "REQUESTED")!=0)
+       
+        if (strcmp(found, "REQUESTED")!=0)       
             printf("%s\n", buffer);
-        free(string);
     }
 }
 
@@ -194,10 +209,10 @@ void *receiveMsgGrp(void *arguments) {
     }
 }
 
-void handleP2P(char *input, node *dict) {
+void handleP2P() {
     int temp, count;
     char *found, *string, info[3][500], aux1[500], ipPort[2][50];
-    string = strdup(input);
+    string = strdup(buffer);
     count=0;
     while((found = strsep(&string, " ")) != NULL) { //criar substrings
         strcpy(info[count], found);
@@ -208,7 +223,11 @@ void handleP2P(char *input, node *dict) {
     if (aux1[0] == '\0') {
         snprintf(buffer, BUFFSIZE, "REQUEST %s", info[1]);
         sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
-        usleep(100000);
+
+        waitingServer=true;
+        sem_wait(&mutex);
+        waitingServer=false;
+
         string = strdup(buffer);
         
         found = strsep(&string, " ");
@@ -219,14 +238,14 @@ void handleP2P(char *input, node *dict) {
                 count++;
             }
             temp = (int) strtol(ipPort[1], (char **) NULL, 10);
-            printf("%d\n", temp);
+           
             adicionar_dict(dict, info[1], ipPort[0], temp);
             addrP2P.sin_addr.s_addr = inet_addr(ipPort[0]);
             addrP2P.sin_port=htons(temp);
             snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
             sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
         } else
-            printf("REQUEST perdido, por favor envie outra vez a mensagem\n");
+            printf("Algo aconteceu...\n");
     } else {
         string = strdup(aux1);
         count=0;
@@ -240,26 +259,25 @@ void handleP2P(char *input, node *dict) {
         snprintf(buffer, BUFFSIZE, "%s SENT %s", whoIam, info[2]);
         sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addrP2P, slen);
     }
-    free(string);
 }
 
 
-void handleGrupo(char *input) {
+void handleGrupo() {
     int count;
     char *found, *string, info[3][128], aux[128];
-    string = strdup(input);
+    string = strdup(buffer);
     count=0;
     while((found = strsep(&string, " ")) != NULL) { //criar substrings
         strcpy(info[count], found);
         count++;
     }
 
-    procurar_ip_grp(dictGrp, input, aux);
+    procurar_ip_grp(dictGrp, info[1], aux);
     addrGroup.sin_addr.s_addr = inet_addr(aux);
 
     sprintf(buffer, "%s SENT to %s: %s", whoIam, info[1], info[2]);
 
-    if (sendto(fd1, info[2], strlen(info[2])+1, 0, (struct sockaddr*)&addrGroup, sizeof(addrGroup)) < 0) {
+    if (sendto(fd1, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&addrGroup, sizeof(addrGroup)) < 0) {
         perror("sending datagram message");
     }
 
