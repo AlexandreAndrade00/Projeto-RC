@@ -9,7 +9,7 @@ PC4=a03d84f9-3ed1-41df-b959-78a6df1e7e01
 
 #compile and move stuff to server
 cd server/
-gcc -o server server.c dict.c -Wall -pthread
+gcc -o server server.c server.h dict.c dict.h -Wall -pthread
 cp server $DIR/$SERVER/home
 echo "Copied files to server"
 
