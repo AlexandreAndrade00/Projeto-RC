@@ -1,19 +1,5 @@
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <sys/wait.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <time.h>
-#include <arpa/inet.h>
+#include "client.h"
 #include "dict.h"
-
-#define BUFFSIZE 1024   // Tamanho do buffer
 
 int fd, fd1;
 struct in_addr localInterface;
@@ -23,14 +9,10 @@ char buffer[BUFFSIZE];
 pthread_t receive, receiveGrp;
 socklen_t slen = sizeof(addr);
 char whoIam[512];
+nodeGrp *dictGrp;
+node *dict;
 
-void erro(char *msg);
-void *receiveMsg(void *arguments);
-void *receiveMsgGrp(void *arguments);
-void userInteration();
-void getMyName(char *aux);
 void handleP2P(char *input, node *dict);
-void handleGrupo(char *input);
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -97,9 +79,11 @@ int main(int argc, char *argv[]) {
 }
 
 void userInteration() {
-    char *string, *found, aux[BUFFSIZE];
-    node *dict;
-    dict = malloc(sizeof(node)*100);
+    char *string, *found, aux[BUFFSIZE], info[10][512];
+    dict = malloc(sizeof(node)*MAX_USERS_SAVED);
+    dictGrp = malloc(sizeof(nodeGrp)*MAX_GROUPS);
+    int count=0;
+
     while(1) {
         printf("Insira dados de autenticacao (AUTH <username> <password>):\n");
         fgets(buffer, sizeof(buffer), stdin);
@@ -108,10 +92,12 @@ void userInteration() {
         if (strcmp(found, "AUTH")==0)
             break;
     }
+
     buffer[strcspn(buffer, "\n")] = 0;
     sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
     strncpy(aux, buffer, strlen(buffer)+1);
     recvfrom(fd, buffer, BUFFSIZE, 0, (struct sockaddr *) &addr, (socklen_t *) &slen);
+
     if (buffer[0]=='A') {
         getMyName(aux);
         printf("%s\n", buffer);
@@ -123,32 +109,66 @@ void userInteration() {
             fgets(buffer, sizeof(buffer), stdin);
             
             buffer[strcspn(buffer, "\n")] = 0;
-            string = strdup(buffer);
-            found = strsep(&string, " ");
+            count=0;
+            string=strdup(buffer);
+            while((found = strsep(&string, " ")) != NULL) { //criar substrings
+                strcpy(info[count], found);
+                count++;
+            }
 
-            if(strcmp(found, "QUIT")==0) {
+            if(strcmp(info[0], "QUIT")==0) {
                 sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
                 pthread_cancel(receive);
+                pthread_cancel(receiveGrp);
                 break;
-            } else if (strcmp(found, "SP2P")==0) {
-                handleP2P(buffer, dict);
-            } else if (strcmp(found, "SGRUPO")==0) {
-                handleGrupo(buffer);
-            } else if (strcmp(found, "JGRUPO")==0) {
-                sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
-                usleep(100000);
-                char *aux = buffer;
+            } else if (strcmp(info[0], "SEND")==0) {
+                if (count!=3)
+                    printf("SEND <user> <message>\n");
+                else
+                    sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
+            } else if (strcmp(info[0], "SP2P")==0) {
+                if (count!=3)
+                    printf("SP2P <user> <message>\n");
+                else
+                    handleP2P(buffer, dict);
+            } else if (strcmp(info[0], "SGRUPO")==0) {
+                if (count!=3)
+                    printf("SGRUPO <group_name> <message>\n");
+                else
+                    handleGrupo(buffer);
+            } else if (strcmp(info[0], "JGRUPO")==0) {
+                if (count!=2)
+                    printf("JGRUPO <group_name>\n");
+                else {
+                    sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
+                    usleep(100000);
 
-                group.imr_multiaddr.s_addr = inet_addr(aux);
-                if (setsockopt(fd1, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0) {
-                    perror("adding multicast group");
-                    close(fd1);
-                    exit(1);
+                    strcpy(aux, info[1]);
+                    string=strdup(buffer);
+                    count=0;
+                    while((found = strsep(&string, " ")) != NULL) { //criar substrings
+                        strcpy(info[count], found);
+                        count++;
+                    }
+
+                    if (strcmp(info[0], "REQUESTED")==0) {
+                        group.imr_multiaddr.s_addr = inet_addr(info[1]);
+                        if (setsockopt(fd1, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0) {
+                            perror("adding multicast group");
+                            close(fd1);
+                            exit(1);
+                        }
+                        adicionar_dict_grp(dictGrp, aux, info[1]);
+                    } else
+                        printf("Comunicacao interrompida, por favor tente novamente!\n");
                 }
-            } else 
-                sendto(fd, buffer, strlen(buffer)+1, 0, (struct sockaddr *) &addr, slen);
+            } else
+                printf("Comando desconhecido!\n");
+
+            free(string);
         }
         pthread_join(receive, NULL);
+        pthread_join(receiveGrp, NULL);
     } else
         printf("%s\n", buffer);
     
@@ -156,13 +176,14 @@ void userInteration() {
 }
 
 void *receiveMsg(void *arguments) {
+    char *string, *found;
     while(1) {
         recvfrom(fd, buffer, BUFFSIZE, 0, (struct sockaddr *) &addrReceive, (socklen_t *) &slen);
         string = strdup(buffer);
         found = strsep(&string, " ");
-        found = strsep(&string, " ");
-        if (strcmp(found, "SENT")==0)
+        if (strcmp(found, "REQUESTED")!=0)
             printf("%s\n", buffer);
+        free(string);
     }
 }
 
@@ -225,7 +246,7 @@ void handleP2P(char *input, node *dict) {
 
 void handleGrupo(char *input) {
     int count;
-    char *found, *string, info[3][500];
+    char *found, *string, info[3][128], aux[128];
     string = strdup(input);
     count=0;
     while((found = strsep(&string, " ")) != NULL) { //criar substrings
@@ -233,7 +254,10 @@ void handleGrupo(char *input) {
         count++;
     }
 
-    addrGroup.sin_addr.s_addr = inet_addr(info[1]);
+    procurar_ip_grp(dictGrp, input, aux);
+    addrGroup.sin_addr.s_addr = inet_addr(aux);
+
+    sprintf(buffer, "%s SENT to %s: %s", whoIam, info[1], info[2]);
 
     if (sendto(fd1, info[2], strlen(info[2])+1, 0, (struct sockaddr*)&addrGroup, sizeof(addrGroup)) < 0) {
         perror("sending datagram message");
